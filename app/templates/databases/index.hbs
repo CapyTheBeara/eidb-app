@@ -1,0 +1,17 @@
+<hr>
+{{#if browserListsDbs}}
+    {{#if controller.content}}
+        <h2>Existing Databases</h2>
+        <p>(Should work in Chrome Canary.)</p>
+        <button {{action 'deleteAllDbs'}}>Delete All Databases</button>
+        <ol>
+        {{#each db in controller}}
+            <li>{{db.name}} <button {{action 'deleteDb' db.name}}>Delete</button></li>
+        {{/each}}
+        </ol>
+    {{else}}
+        <p>No databases found.</p>
+    {{/if}}
+{{else}}
+    <p>This browser doesn't support listing of existing databases. Try Chrome Canary instead.</p>
+{{/if}}

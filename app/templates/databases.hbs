@@ -1,0 +1,8 @@
+<form {{action 'selectDb' on='submit'}}>
+    <h3>Select/create a database:</h3>
+    <label>Name</lable>{{view Ember.TextField valueBinding='dbNameInput'}}
+    <button type='submit'>Go</button>
+</form>
+<br>
+
+{{outlet}}

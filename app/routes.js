@@ -1,8 +1,8 @@
 function Routes() {
-  // // routes/resources
-  // this.resource('posts', function() {
-  //   this.route('new');
-  // });
+  this.resource('databases', {path: '/'}, function() {
+    this.route('new');
+    this.route('delete', {path: 'databases/:name/delete'});
+  });
 }
 
 export default Routes;
