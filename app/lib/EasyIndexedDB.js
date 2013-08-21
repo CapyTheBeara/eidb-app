@@ -41,13 +41,16 @@ import App from 'appkit/app';
         var req = version ? indexedDB.open(name, version) : indexedDB.open(name);
 
         req.onsuccess = function(event) {
-          resolve(new Database(req.result));
+          var db = new Database(req.result);
+          resolve(db);
+          db.close();
+
         };
         req.onerror = function(event) {
           reject(event);
         };
         req.onupgradeneeded = function(event) {
-          if (upgradeCallback) { upgradeCallback({db: new Database(req.result), request: req}); } // different API than .open!
+          if (upgradeCallback && req.result) { upgradeCallback({db: new Database(req.result), request: req}); } // different API than .open!
         };
       });
     },
