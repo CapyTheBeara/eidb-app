@@ -10,4 +10,8 @@ var App = Ember.Application.create({
 import routes from 'appkit/routes';
 App.Router.map(routes); // TODO: just resolve the router
 
+Ember.RSVP.configure('onerror', function(error) {
+  console.log('RSVP onerror', error, error.message + '', error.stack);
+});
+
 export default App;
