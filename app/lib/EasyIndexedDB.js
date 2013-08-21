@@ -43,7 +43,12 @@ import App from 'appkit/app';
         req.onsuccess = function(event) {
           var db = new Database(req.result);
           resolve(db);
-          if (!keepOpen) {db.close();}
+
+          // more insanity? otherwise #close is called before resolve is finished
+          setTimeout(function() {
+            if (!keepOpen) {db.close();}
+          }, 0);
+
         };
         req.onerror = function(event) {
           reject(event);
