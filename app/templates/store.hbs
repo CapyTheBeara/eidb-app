@@ -1,0 +1,13 @@
+<hr>
+<h3>Data for {{storeName}}</h3>
+
+<ol>
+{{#each row in content}}
+    <li>
+        {{#if isGithub}}
+            <img src="{{unbound row.avatarURL}}" height='48' width='48'>
+        {{/if}}
+        <pre><code>{{unbound row.json}}</code></pre>
+    </li>
+{{/each}}
+</ol>

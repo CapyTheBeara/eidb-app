@@ -36,7 +36,7 @@ var DatabasesController = Ember.Controller.extend({
         return db;
       }).then(function(db) {
         db.close();
-        controller.transitionToRoute('stores.index', dbName);
+        controller.transitionToRoute('store', dbName, storeName);
       });
     });
   }

@@ -4,7 +4,7 @@ function Routes() {
   });
 
   this.resource('stores', {path: '/databases/:database_id'}, function() {
-    this.resource('store');
+    this.resource('store', {path: ':store_id'});
   });
 }
 
