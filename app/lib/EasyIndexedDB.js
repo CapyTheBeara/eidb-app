@@ -36,15 +36,14 @@ import App from 'appkit/app';
       });
     },
 
-    _open: function(name, version, upgradeCallback) {
+    _open: function(name, version, upgradeCallback, keepOpen) {
       return new Promise(function(resolve, reject) {
         var req = version ? indexedDB.open(name, version) : indexedDB.open(name);
 
         req.onsuccess = function(event) {
           var db = new Database(req.result);
           resolve(db);
-          db.close();
-
+          if (!keepOpen) {db.close();}
         };
         req.onerror = function(event) {
           reject(event);
