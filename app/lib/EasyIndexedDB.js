@@ -116,11 +116,13 @@ import App from 'appkit/app';
   var Database = EIDB.Database = function(idbDatabase) {
     this._idbDatabase = idbDatabase;
     this.version = idbDatabase.version;
+    this.objectStoreNames = idbDatabase.objectStoreNames;
   };
 
   Database.prototype = {
     _idbDatabase: null,
     version: null,
+    objectStoreNames: null,
 
     close: function() {
       return this._idbDatabase.close();
@@ -128,6 +130,10 @@ import App from 'appkit/app';
 
     createObjectStore: function(name, options) {
       return new ObjectStore(this._idbDatabase.createObjectStore(name, options));
+    },
+
+    deleteObjectStore: function(name) {
+      return this._idbDatabase.deleteObjectStore(name);
     },
 
     transaction: function(objectStores, mode) {
