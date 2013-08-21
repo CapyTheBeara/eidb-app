@@ -1,3 +1,5 @@
+var indexedDB = window.indexedDB;
+
 var DatabasesIndexRoute = Ember.Route.extend({
   setupController: function(controller) {
     var supports = 'webkitGetDatabaseNames' in indexedDB;

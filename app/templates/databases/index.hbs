@@ -1,12 +1,12 @@
 <hr>
 {{#if browserListsDbs}}
     {{#if controller.content}}
-        <h2>Existing Databases</h2>
+        <h3>Existing Databases</h3>
         <p>(Should work in Chrome Canary.)</p>
         <button {{action 'deleteAllDbs'}}>Delete All Databases</button>
         <ol>
         {{#each db in controller}}
-            <li>{{db.name}} <button {{action 'deleteDb' db.name}}>Delete</button></li>
+            <li>{{#linkTo 'stores' db.id}}{{db.id}}{{/linkTo}} <button {{action 'deleteDb' db.id}}>Delete</button></li>
         {{/each}}
         </ol>
     {{else}}

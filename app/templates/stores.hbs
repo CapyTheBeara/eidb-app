@@ -1,0 +1,19 @@
+<form {{action 'createStore' on='submit'}}>
+    <h3>Create an Object Store:</h3>
+    <label>Name</lable>{{view Ember.TextField valueBinding='storeNameInput'}}
+    <button type='submit'>Go</button>
+</form>
+<hr>
+
+{{#if controller.content}}
+    <h3>Existing Object Stores</h3>
+    <button {{action 'deleteAllStores'}}>Delete All Stores</button>
+    <ol>
+    {{#each store in controller}}
+        <li>{{store.id}}<button {{action 'deleteStore' store.id}}>Delete</button></li>
+    {{/each}}
+    </ol>
+{{else}}
+    <p>No object stores found.</p>
+{{/if}}
+

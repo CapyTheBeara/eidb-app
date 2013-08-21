@@ -1,12 +1,13 @@
 import EIDB from 'appkit/lib/EasyIndexedDB';
+import __ from 'appkit/lib/underunderscore';
 
-var indexedDB = window.indexedDB;
+var confirm = window.confirm,
+    alert = window.alert,
+    indexedDB = window.indexedDB;
 
 var DatabasesIndexController = Ember.ArrayController.extend({
   needs: 'databases',
   browserListsDbs: null,
-  selectedDb: null,
-  selectedDbBinding: 'controllers.databases.selectedDb',
 
   getDatabaseNames: function() {
     if (this.get('browserListsDbs')) {
@@ -15,16 +16,16 @@ var DatabasesIndexController = Ember.ArrayController.extend({
           req = indexedDB.webkitGetDatabaseNames();
 
       req.onsuccess = function(evt) {
-        var list = evt.target.result;
-        delete list.length;
-        for (var i in list) { arr[i] = {name: list[i]};}
+        var arr = __.DOMStringListToArray(evt.target.result, function(i, list) {
+          return {id: list[i]};
+        });
         controller.set('content', arr);
       };
       req.onerror = function(evt) {
         console.log(evt);
       };
     }
-  }.observes('selectedDb'),
+  },
 
   deleteDb: function(name) {
     var controller = this;
@@ -42,7 +43,7 @@ var DatabasesIndexController = Ember.ArrayController.extend({
           reqs = [];
 
       names.forEach(function(obj) {
-        reqs.push(EIDB.delete(obj.name));
+        reqs.push(EIDB.delete(obj.id));
       });
 
       Ember.RSVP.all(reqs).then(function(x) {

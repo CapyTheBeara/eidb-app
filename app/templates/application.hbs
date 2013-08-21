@@ -1,1 +1,10 @@
+<header>
+    <ul>
+        <li>{{#linkTo 'databases'}}Databases{{/linkTo}}</li>
+    </ul>
+
+    {{#if selectedDb}}
+        <div>Selected Database: {{selectedDb}} </div>
+    {{/if}}
+</header>
 {{outlet}}

@@ -1,7 +1,10 @@
 function Routes() {
   this.resource('databases', {path: '/'}, function() {
-    this.route('new');
-    this.route('delete', {path: 'databases/:name/delete'});
+    this.route('delete', {path: 'databases/:database_id/delete'});
+  });
+
+  this.resource('stores', {path: '/databases/:database_id'}, function() {
+    this.resource('store');
   });
 }
 
