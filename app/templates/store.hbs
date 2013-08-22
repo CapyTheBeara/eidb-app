@@ -1,11 +1,16 @@
 <hr>
-<h3>Data for {{storeName}}</h3>
 
+    <h3>Data for {{storeName}}</h3>
+    <p>Results: {{controller.length}}</p>
+    {{#if isGithub}}
+        Comment size {{view Ember.TextField valueBinding='search'}}
+    {{/if}}
 <ol>
 {{#each row in content}}
     <li>
         {{#if isGithub}}
             <img src="{{unbound row.avatarURL}}" height='48' width='48'>
+            <span><strong>{{unbound row.title}}</strong></span>
         {{/if}}
         <pre><code>{{unbound row.json}}</code></pre>
     </li>

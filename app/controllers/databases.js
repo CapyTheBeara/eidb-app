@@ -19,8 +19,8 @@ var DatabasesController = Ember.Controller.extend({
         storeName = 'ember_github_issues';
 
     Ember.RSVP.all(
-      [$.get("https://api.github.com/repos/emberjs/ember.js/issues?>page=1?per_page=30"),
-       $.get("https://api.github.com/repos/emberjs/ember.js/issues?>page=2?per_page=30")]
+      [$.get("https://api.github.com/repos/emberjs/ember.js/issues?>page=1?&per_page=100"),
+       $.get("https://api.github.com/repos/emberjs/ember.js/issues?>page=2?&per_page=100")]
     ).then(function(res){
       var issues = [].concat.apply([], res);
 
