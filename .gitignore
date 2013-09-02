@@ -7,9 +7,10 @@
 # dependencies
 /node_modules
 /vendor
-!/vendor/resolver.js
+!/vendor/loader.js
 
 # misc
 /.sass-cache
 /connect.lock
 /libpeerconnection.log
+.DS_Store
