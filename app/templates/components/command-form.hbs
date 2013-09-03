@@ -1,0 +1,12 @@
+<form class='command' {{action 'submitCommand' on='submit'}}>
+   {{view Ember.TextField id='command-input' valueBinding='eidbCommand' placeholder='Enter EIDB command' focus-in="showCommandList" focus-out='hideCommandList'}}
+    <button type='submit'>Go</button>
+</form>
+
+<div class='command-list-container'>
+    <ul {{bind-attr class=':command-list commandListVisible::hide'}}>
+    {{#each command in commandList}}
+        <li {{action 'setCommand' command}}>{{command}}</li>
+    {{/each}}
+    </ul>
+</div>

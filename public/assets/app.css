@@ -3,7 +3,6 @@
 .tree, .tree ul{
   font: normal normal 14px/20px Helvetica, Arial, sans-serif;
   list-style-type: none;
-  margin-left: 0 0 0 10px;
   padding: 0;
   position: relative;
   overflow:hidden;
@@ -61,7 +60,7 @@ section.tree {
   padding-left: 20px ;
 }
 
-ul.stores > li {
+/*ul.stores > li {
   display: block;
   width: 33%;
   float: left;
@@ -69,4 +68,29 @@ ul.stores > li {
 
 .dl-horizontal dt {
   text-align: left;
+}
+*/
+form.command {
+  margin-top: 7px;
+}
+
+.command-list-container {
+  position: absolute;
+}
+
+.command-list {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 10;
+  background-color: white;
+  border: 1px solid #ddd;
+  padding: 10px 10px;
+  list-style: none;
+}
+
+.command-list li:hover {
+  background-color: #ededed;
+  cursor: pointer;
+  border: 1px solid gray;
 }
