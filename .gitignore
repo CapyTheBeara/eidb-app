@@ -6,8 +6,9 @@
 
 # dependencies
 /node_modules
-/vendor
-!/vendor/loader.js
+/vendor/ember-prod
+/vendor/handlebars/handlebars.runtime.js
+/vendor/qunit
 
 # misc
 /.sass-cache
