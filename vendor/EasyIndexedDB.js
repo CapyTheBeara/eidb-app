@@ -1,6 +1,4 @@
-// monocle/dev branch 9/2/13
-
-window.RSVP = Ember.RSVP;
+// monocle/dev branch 9/4/13
 
 (function(globals) {
 var define, requireModule;
@@ -143,6 +141,7 @@ define("eidb/eidb",
     var RSVP = __dependency2__.RSVP;
     var Database = __dependency3__.Database;
     var _request = __dependency4__._request;
+    var __instrument__ = __dependency4__.__instrument__;
 
     function open(name, version, upgradeCallback, opts) {
       return new Promise(function(resolve, reject) {
@@ -212,32 +211,47 @@ define("eidb/eidb",
       }, {returnEvent: true});
     }
 
-    function _storeAction(dbName, storeName, callback) {
-      return open(dbName).then(function(db) {
+    function _storeAction(dbName, storeName, callback, openOpts) {
+      return open(dbName, null, null, openOpts).then(function(db) {
         var store = db.objectStore(storeName);
+
+        if (openOpts && openOpts.keepOpen) {
+          return callback(store, db);
+        }
+
         return callback(store);
       });
     }
 
+    // note ObjectStore#insertWith_key will close the database
     function _insertRecord(dbName, storeName, value, key, method) {
-      return _storeAction(dbName, storeName, function(store) {
+      return _storeAction(dbName, storeName, function(store, db) {
+
         if (value instanceof Array) {
           return RSVP.all(value.map(function(_value, i) {
 
             if (!store.keyPath && key instanceof Array) {
-              return store.insertWith_key(method, _value, key[i]);
+              return store.insertWith_key(method, _value, key[i], db);
             }
 
-            if (!store.keyPath) { return store.insertWith_key(method, _value); }
+            if (!store.keyPath) {
+              return store.insertWith_key(method, _value, null, db);
+            }
 
-            return store[method](_value);  // in-line keys
+            // in-line keys
+            db.close();
+            return store[method](_value);
           }));
         }
 
-        if (!store.keyPath) { return store.insertWith_key(method, value, key); }
+        if (!store.keyPath) {
+          return store.insertWith_key(method, value, key, db);
+        }
 
-        return store[method](value, key);  // in-line keys
-      });
+        // in-line keys
+        db.close();
+        return store[method](value, key);
+      }, {keepOpen: true});
     }
 
     function addRecord(dbName, storeName, value, key) {
@@ -350,6 +364,7 @@ define("eidb/object_store",
     "use strict";
     var Promise = __dependency1__.Promise;
     var Index = __dependency2__.Index;
+    var __instrument__ = __dependency3__.__instrument__;
     var _request = __dependency3__._request;
     var _openCursor = __dependency3__._openCursor;
     var _getAll = __dependency3__._getAll;
@@ -400,19 +415,33 @@ define("eidb/object_store",
         return _getAll(this._idbObjectStore, range, direction);
       },
 
-      // for use with out-of-line key stores. (Database doesn't
+      // For use with out-of-line key stores. (Database doesn't
       // return the interal key when fetching records.)
-      insertWith_key: function(method, value, key) {
+      // Requires a database that has not been closed.
+      insertWith_key: function(method, value, key, db) {
         var store = this;
 
         if (key) {
           value._key = key;
+          db.close();
           return store[method](value, key);
         }
 
         return store.add(value).then(function(key) {
           value._key = key;
-          return store.put(value, key);
+
+          return __instrument__(function() {  // __instrument__ is used in testing
+            // if the transaction used for #add above gets put into the next
+            // event loop cycle (happens when using Ember), we need to create
+            // a new transaction fo the #put action
+            var tx = store._idbObjectStore.transaction.db.transaction(store.name, "readwrite");
+            var newStore = new ObjectStore(tx.objectStore(store.name));
+
+            return newStore.put(value, key).then(function(_key) {
+              db.close();
+              return _key;
+            });
+          });
         });
       },
 
@@ -446,7 +475,14 @@ define("eidb/promise",
   ["exports"],
   function(__exports__) {
     "use strict";
-    var RSVP = window.RSVP;
+    var RSVP;
+
+    if (window.RSVP) {
+      RSVP = window.RSVP;
+    } else if (window.Ember) {
+      RSVP = window.Ember.RSVP;
+    }
+
     var Promise = RSVP.Promise;
 
 
@@ -480,6 +516,13 @@ define("eidb/utils",
   function(__dependency1__, __exports__) {
     "use strict";
     var Promise = __dependency1__.Promise;
+
+    function __instrument__(methodCallback) {
+      if (__instrument__.setup) {
+        return __instrument__.setup(methodCallback);
+      }
+      return methodCallback();
+    }
 
     function _warn(condition, statement) {
       if (condition) { console.warn(statement); }
@@ -532,14 +575,15 @@ define("eidb/utils",
       }
 
 
+    __exports__.__instrument__ = __instrument__;
     __exports__._warn = _warn;
     __exports__._request = _request;
     __exports__._openCursor = _openCursor;
     __exports__._getAll = _getAll;
   });
 define("eidb",
-  ["eidb/eidb","eidb/database","eidb/object_store","eidb/transaction","eidb/index","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
+  ["eidb/eidb","eidb/database","eidb/object_store","eidb/transaction","eidb/index","eidb/utils","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
     "use strict";
     var open = __dependency1__.open;
     var _delete = __dependency1__._delete;
@@ -558,9 +602,11 @@ define("eidb",
     var ObjectStore = __dependency3__.ObjectStore;
     var Transaction = __dependency4__.Transaction;
     var Index = __dependency5__.Index;
+    var __instrument__ = __dependency6__.__instrument__;
 
     __exports__.delete = _delete;
 
+    // TODO - don't make __instrument__ public. (For now, need it for testing.)
 
     __exports__.open = open;
     __exports__.version = version;
@@ -578,7 +624,7 @@ define("eidb",
     __exports__.ObjectStore = ObjectStore;
     __exports__.Transaction = Transaction;
     __exports__.Index = Index;
+    __exports__.__instrument__ = __instrument__;
   });
 window.EIDB = requireModule("eidb");
 })(window);
-
