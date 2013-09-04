@@ -1,0 +1,18 @@
+<ul class="tree">
+{{#each db in content}}
+    <li>
+    {{#link-to 'database' db.name}}
+        {{db.name}} (v{{db.version}})
+    {{/link-to}}
+        <ul>
+        {{#each store in db.stores}}
+            <li>
+            {{#link-to 'store' db.name store.name}}
+                {{store.name}}
+            {{/link-to}}
+            </li>
+        {{/each}}
+        </ul>
+    </li>
+{{/each}}
+</ul>

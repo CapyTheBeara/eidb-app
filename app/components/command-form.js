@@ -19,6 +19,7 @@ var CommandFormComponent = Ember.Component.extend({
     console.log(eval(command));
 
     this.set('eidbCommand', null);
+    this.sendAction();
   },
 
   actions: {
