@@ -1,4 +1,4 @@
-import { _eidbGetTree } from 'appkit/helpers/utils';
+import { _eidbGetTree, _eidbDeleteAllDbs } from 'appkit/helpers/utils';
 
 var ApplicationController = Ember.ArrayController.extend({
   commandListVisible: false,
@@ -24,6 +24,16 @@ var ApplicationController = Ember.ArrayController.extend({
     htmlClicked: function(evt) {
       if ($('#command-form-li').has(evt.target).length < 1) {
         this.send('hideCommandList');
+      }
+    },
+
+    deleteAllDbs: function() {
+      var controller = this;
+
+      if (window.confirm('Are you sure')) {
+        _eidbDeleteAllDbs(function() {
+          controller.set('commandLastSubmitted', new Date());
+        });
       }
     }
   }
