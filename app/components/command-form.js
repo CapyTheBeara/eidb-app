@@ -39,8 +39,19 @@ var CommandFormComponent = Ember.Component.extend({
     },
 
     setCommand: function(command) {
-      this.set('eidbCommand', command);
+      var dbName = this.get('currentDbName'),
+          storeName = this.get('currentStoreName'),
+          isStoreCommand = command.match(/Record/);
+
       $('#command-input').focus();
+      if (dbName) {
+        command = command + "('" + dbName + "'";
+      }
+
+      if (storeName && isStoreCommand) {
+        command = command + ", '" + storeName + "'";
+      }
+      this.set('eidbCommand', command);
     },
 
     showCommandList: function() {

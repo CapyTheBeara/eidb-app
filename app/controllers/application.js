@@ -3,6 +3,8 @@ import { _eidbGetTree, _eidbDeleteAllDbs } from 'appkit/helpers/utils';
 var ApplicationController = Ember.ArrayController.extend({
   commandListVisible: false,
   commandLastSubmitted: null,
+  currentDbName: null,
+  currentStoreName: null,
 
   setContent: function() {
     var controller = this;

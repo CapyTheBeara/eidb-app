@@ -1,5 +1,9 @@
 <form class='command' {{action 'submitCommand' on='submit'}}>
-   {{view Ember.TextField id='command-input' valueBinding='eidbCommand' placeholder='Enter EIDB command' focus-in="showCommandList" focus-out='hideCommandList'}}
+   {{view Ember.TextField id='command-input'
+                          valueBinding='eidbCommand'
+                          placeholder='Enter EIDB command'
+                          focus-in="showCommandList"
+                          focus-out='hideCommandList'}}
     <button type='submit'>Go</button>
 </form>
 

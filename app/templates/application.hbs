@@ -1,7 +1,12 @@
 <ul class="nav nav-pills">
     <li>{{#link-to 'index'}}Home{{/link-to}}</li>
     <li>{{#link-to 'mockup'}}Mockup{{/link-to}}</li>
-    <li id='command-form-li'>{{command-form commandListVisible=commandListVisible action='commandSubmitted'}}</li>
+    <li id='command-form-li'>
+        {{command-form action = 'commandSubmitted'
+                       commandListVisible = commandListVisible
+                       currentDbName = currentDbName
+                       currentStoreName = currentStoreName}}
+    </li>
 </ul>
 
 <section class="tree col-md-2">

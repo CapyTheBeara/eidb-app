@@ -7,6 +7,9 @@ var DatabaseRoute = Ember.Route.extend({
 
   setupController: function(controller, model) {
     controller.set('content', model);
+    controller.set('controllers.application.currentDbName', model.name);
+    controller.set('controllers.application.currentStoreName', null);
+
     controller.setStores();
   }
 });
