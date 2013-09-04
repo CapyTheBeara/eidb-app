@@ -19,8 +19,20 @@ var ApplicationController = Ember.ArrayController.extend({
 
     commandSubmitted: function() {
       this.set('commandLastSubmitted', new Date());
+    },
+
+    htmlClicked: function(evt) {
+      if ($('#command-form-li').has(evt.target).length < 1) {
+        this.send('hideCommandList');
+      }
     }
   }
+});
+
+// this will allow the command list to be closed when clicking
+// outside of the Ember app
+$('html').click(function(evt) {
+  Ember.Instrumentation.instrument('html.click', evt);
 });
 
 export default ApplicationController;
