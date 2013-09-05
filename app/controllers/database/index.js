@@ -16,7 +16,7 @@ var DatabaseIndexController = Ember.ArrayController.extend({
     _eidbGetObjectStores(db.name, function(stores) {
       controller.set('stores', stores);
     });
-  }.observes('controllers.application.commandLastSubmitted')
+  }.observes('db', 'controllers.application.commandLastSubmitted')
 
 });
 

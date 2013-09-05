@@ -140,6 +140,7 @@ define("eidb/eidb",
     var Promise = __dependency2__.Promise;
     var RSVP = __dependency2__.RSVP;
     var Database = __dependency3__.Database;
+    var _warn = __dependency4__._warn;
     var _request = __dependency4__._request;
     var __instrument__ = __dependency4__.__instrument__;
 
@@ -180,6 +181,43 @@ define("eidb/eidb",
 
     function webkitGetDatabaseNames() {
       return _request(indexedDB, "webkitGetDatabaseNames");
+    }
+
+    function getDatabaseNamesSupported() {
+      return 'webkitGetDatabaseNames' in indexedDB;
+    }
+
+    function getDatabaseNames() {
+      if (getDatabaseNamesSupported()) {
+        return webkitGetDatabaseNames();
+      }
+
+      _warn(true, "EIDB.getDatabaseNames is currently only supported in Chrome" );
+      return RSVP.all([]);
+    }
+
+    function openOnly(dbName, version, upgradeCallback, opts) {
+      if (getDatabaseNamesSupported()) {
+        return getDatabaseNames().then(function(names) {
+          if (names.contains(dbName) && !version) {
+            return open(dbName, version, upgradeCallback, opts);
+          }
+
+          if (names.contains(dbName) && version) {
+            return open(dbName).then(function(db) {
+              if (db.version >= version) {
+                return open(dbName, version, upgradeCallback, opts);
+              }
+              return null;
+            });
+          }
+
+          return null;
+        });
+      }
+
+      _warn(true, "EIDB.openOnly acts like .open in non-supported browsers" );
+      return open(dbName, version, upgradeCallback, opts);
     }
 
     function bumpVersion(dbName, upgradeCallback, opts) {
@@ -285,6 +323,9 @@ define("eidb/eidb",
     __exports__._delete = _delete;
     __exports__.version = version;
     __exports__.webkitGetDatabaseNames = webkitGetDatabaseNames;
+    __exports__.getDatabaseNamesSupported = getDatabaseNamesSupported;
+    __exports__.getDatabaseNames = getDatabaseNames;
+    __exports__.openOnly = openOnly;
     __exports__.bumpVersion = bumpVersion;
     __exports__.createObjectStore = createObjectStore;
     __exports__.deleteObjectStore = deleteObjectStore;
@@ -418,6 +459,7 @@ define("eidb/object_store",
       // For use with out-of-line key stores. (Database doesn't
       // return the interal key when fetching records.)
       // Requires a database that has not been closed.
+      // When does, it will close the database.
       insertWith_key: function(method, value, key, db) {
         var store = this;
 
@@ -589,6 +631,9 @@ define("eidb",
     var _delete = __dependency1__._delete;
     var version = __dependency1__.version;
     var webkitGetDatabaseNames = __dependency1__.webkitGetDatabaseNames;
+    var getDatabaseNamesSupported = __dependency1__.getDatabaseNamesSupported;
+    var getDatabaseNames = __dependency1__.getDatabaseNames;
+    var openOnly = __dependency1__.openOnly;
     var bumpVersion = __dependency1__.bumpVersion;
     var createObjectStore = __dependency1__.createObjectStore;
     var deleteObjectStore = __dependency1__.deleteObjectStore;
@@ -611,6 +656,9 @@ define("eidb",
     __exports__.open = open;
     __exports__.version = version;
     __exports__.webkitGetDatabaseNames = webkitGetDatabaseNames;
+    __exports__.getDatabaseNamesSupported = getDatabaseNamesSupported;
+    __exports__.getDatabaseNames = getDatabaseNames;
+    __exports__.openOnly = openOnly;
     __exports__.bumpVersion = bumpVersion;
     __exports__.createObjectStore = createObjectStore;
     __exports__.deleteObjectStore = deleteObjectStore;
