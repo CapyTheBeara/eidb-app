@@ -1,4 +1,4 @@
-// monocle/dev branch 9/4/13
+// monocle/dev branch 9/5/13
 
 (function(globals) {
 var define, requireModule;
@@ -38,12 +38,13 @@ var define, requireModule;
 })();
 
 define("eidb/database",
-  ["eidb/indexed_db","eidb/object_store","eidb/transaction","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __exports__) {
+  ["eidb/indexed_db","eidb/object_store","eidb/transaction","eidb/error_handling","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
     "use strict";
     var idbDatabase = __dependency1__.idbDatabase;
     var ObjectStore = __dependency2__.ObjectStore;
     var Transaction = __dependency3__.Transaction;
+    var _handleErrors = __dependency4__._handleErrors;
 
     var Database = function(idbDatabase) {
       this._idbDatabase = idbDatabase;
@@ -59,15 +60,21 @@ define("eidb/database",
       objectStoreNames: null,
 
       close: function() {
-        return this._idbDatabase.close();
+        return _handleErrors(this, function(self) {
+          return self._idbDatabase.close();
+        }, {propogateError: true});
       },
 
       createObjectStore: function(name, options) {
-        return new ObjectStore(this._idbDatabase.createObjectStore(name, options));
+        return _handleErrors(this, function(self) {
+          return new ObjectStore(self._idbDatabase.createObjectStore(name, options));
+        });
       },
 
       deleteObjectStore: function(name) {
-        return this._idbDatabase.deleteObjectStore(name);
+        return _handleErrors(this, function(self) {
+          return self._idbDatabase.deleteObjectStore(name);
+        });
       },
 
       objectStore: function(name) {
@@ -75,13 +82,13 @@ define("eidb/database",
       },
 
       transaction: function(objectStores, mode) {
-        var tx;
+        var tx = _handleErrors(this, function(self) {
+          if (mode !== undefined) {
+            return self._idbDatabase.transaction(objectStores, mode);
+          }
 
-        if (mode !== undefined) {
-          tx = this._idbDatabase.transaction(objectStores, mode);
-        } else {
-          tx = this._idbDatabase.transaction(objectStores);
-        }
+          return self._idbDatabase.transaction(objectStores);
+        });
 
         return new Transaction(tx);
       },
@@ -133,8 +140,8 @@ define("eidb/database",
     __exports__.Database = Database;
   });
 define("eidb/eidb",
-  ["eidb/indexed_db","eidb/promise","eidb/database","eidb/utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
+  ["eidb/indexed_db","eidb/promise","eidb/database","eidb/utils","eidb/error_handling","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __exports__) {
     "use strict";
     var indexedDB = __dependency1__.indexedDB;
     var Promise = __dependency2__.Promise;
@@ -143,12 +150,16 @@ define("eidb/eidb",
     var _warn = __dependency4__._warn;
     var _request = __dependency4__._request;
     var __instrument__ = __dependency4__.__instrument__;
+    var _rsvpErrorHandler = __dependency5__._rsvpErrorHandler;
 
     function open(name, version, upgradeCallback, opts) {
       return new Promise(function(resolve, reject) {
-        var req = version ? indexedDB.open(name, version) : indexedDB.open(name);
+        var EIDB = window.EIDB,
+            req = version ? indexedDB.open(name, version) : indexedDB.open(name);
 
         req.onsuccess = function(event) {
+          EIDB.error = null;
+
           var db = new Database(req.result);
           resolve(db);
 
@@ -162,10 +173,14 @@ define("eidb/eidb",
           reject(event);
         };
         req.onupgradeneeded = function(event) {
+          EIDB.error = null;
+
           var db = new Database(req.result),
               ret = (opts && opts.returnEvent) ? {db: db, event: event} : db;
           if (upgradeCallback) { upgradeCallback(ret); }
         };
+      }).then(null, function(e) {
+        _rsvpErrorHandler(e, indexedDB, "open", [name, version, upgradeCallback, opts]);
       });
     }
 
@@ -321,12 +336,12 @@ define("eidb/eidb",
 
     __exports__.open = open;
     __exports__._delete = _delete;
+    __exports__.openOnly = openOnly;
+    __exports__.bumpVersion = bumpVersion;
     __exports__.version = version;
     __exports__.webkitGetDatabaseNames = webkitGetDatabaseNames;
     __exports__.getDatabaseNamesSupported = getDatabaseNamesSupported;
     __exports__.getDatabaseNames = getDatabaseNames;
-    __exports__.openOnly = openOnly;
-    __exports__.bumpVersion = bumpVersion;
     __exports__.createObjectStore = createObjectStore;
     __exports__.deleteObjectStore = deleteObjectStore;
     __exports__.createIndex = createIndex;
@@ -335,6 +350,97 @@ define("eidb/eidb",
     __exports__.putRecord = putRecord;
     __exports__.deleteRecord = deleteRecord;
     __exports__.getAll = getAll;
+  });
+define("eidb/error_handling",
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    var LOG_ERRORS = true;
+    var error = null;
+
+    function _handleErrors(context, code, opts) {
+      var EIDB = window.EIDB,
+          logErrors = EIDB.LOG_ERRORS;
+
+      if (!opts || !opts.propogateError) { EIDB.error = null; }
+
+      try {
+        return code(context);
+      } catch (e) {
+        var error = EIDB.error = {
+          name: e.name,
+          context: context,
+          error: e
+        };
+
+        error.message = __createErrorMessage(e);
+
+        if (logErrors) { console.error(error); }
+
+        EIDB.trigger('error', error);
+        return false;
+      }
+    }
+
+    function __createErrorMessage(e) {
+      var EIDB = window.EIDB,
+          message = null;
+
+         if (e.message) {
+          message = e.message;
+        }
+
+        if (e.target && e.target.error && e.target.error.message) {
+          message = e.target.error.message;
+        }
+
+      return message;
+    }
+
+    function _rsvpErrorHandler(e, idbObj, method, args) {
+      var EIDB = window.EIDB,
+          logErrors = EIDB.LOG_ERRORS;
+
+      var error = EIDB.error = {
+        name: "EIDB request " + idbObj + " #" + method + " error",
+        error: e,
+        idbObj: idbObj,
+        arguments: args
+      };
+
+      error.message = __createErrorMessage(e);
+
+      if (logErrors) { console.error(error); }
+
+      EIDB.error = error;
+      EIDB.trigger('error', error);
+    }
+
+    function registerErrorHandler(handler) {
+      var handlers = registerErrorHandler.handlers;
+      handlers.push(handler);
+      return true;
+    }
+
+    registerErrorHandler.handlers = [];
+
+    registerErrorHandler.notify = function(e) {
+      var handlers = registerErrorHandler.handlers;
+      handlers.forEach(function(handler) {
+        handler(e);
+      });
+    };
+
+    registerErrorHandler.clearHandlers = function() {
+      registerErrorHandler.handlers = [];
+    };
+
+
+    __exports__.LOG_ERRORS = LOG_ERRORS;
+    __exports__.error = error;
+    __exports__.registerErrorHandler = registerErrorHandler;
+    __exports__._handleErrors = _handleErrors;
+    __exports__._rsvpErrorHandler = _rsvpErrorHandler;
   });
 define("eidb/index",
   ["eidb/promise","eidb/utils","exports"],
@@ -400,8 +506,8 @@ define("eidb/indexed_db",
     __exports__.indexedDB = indexedDB;
   });
 define("eidb/object_store",
-  ["eidb/promise","eidb/index","eidb/utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __exports__) {
+  ["eidb/promise","eidb/index","eidb/utils","eidb/error_handling","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
     "use strict";
     var Promise = __dependency1__.Promise;
     var Index = __dependency2__.Index;
@@ -409,6 +515,7 @@ define("eidb/object_store",
     var _request = __dependency3__._request;
     var _openCursor = __dependency3__._openCursor;
     var _getAll = __dependency3__._getAll;
+    var _handleErrors = __dependency4__._handleErrors;
 
     var ObjectStore = function(idbObjectStore) {
       this._idbObjectStore = idbObjectStore;
@@ -425,7 +532,7 @@ define("eidb/object_store",
       autoIncrement: null,
 
       add: function(value, key) {
-       return _request(this._idbObjectStore, 'add', arguments);
+        return _request(this._idbObjectStore, 'add', arguments);
       },
 
       get: function(key) {
@@ -476,13 +583,22 @@ define("eidb/object_store",
             // if the transaction used for #add above gets put into the next
             // event loop cycle (happens when using Ember), we need to create
             // a new transaction fo the #put action
-            var tx = store._idbObjectStore.transaction.db.transaction(store.name, "readwrite");
-            var newStore = new ObjectStore(tx.objectStore(store.name));
 
-            return newStore.put(value, key).then(function(_key) {
-              db.close();
-              return _key;
+            var tx = _handleErrors(this, function(self) {
+              return store._idbObjectStore.transaction.db.transaction(store.name, "readwrite");  // must keep this all chained
             });
+
+            if (tx) {
+              var newStore = new ObjectStore(tx.objectStore(store.name));
+
+              return newStore.put(value, key).then(function(_key) {
+                db.close();
+                return _key;
+              });
+            }
+
+            db.close();  // error occurred
+            return false;
           });
         });
       },
@@ -490,20 +606,28 @@ define("eidb/object_store",
       indexNames: null,
 
       index: function(name) {
-        return new Index(this._idbObjectStore.index(name), this);
+        return _handleErrors(this, function(self) {
+          return new Index(self._idbObjectStore.index(name), self);
+        });
       },
 
       createIndex: function(name, keyPath, params) {
-        var store = this._idbObjectStore,
-            index = store.createIndex(name, keyPath, params);
+        var store = this._idbObjectStore;
+
+        var index = _handleErrors(this, function(self) {
+          return store.createIndex(name, keyPath, params);
+        });
 
         this.indexNames = store.indexNames;
         return new Index(index, this);
       },
 
       deleteIndex: function(name) {
-        var store = this._idbObjectStore,
-            res = store.deleteIndex(name);
+        var store = this._idbObjectStore;
+
+        var res = _handleErrors(this, function(self) {
+          return store.deleteIndex(name);
+        });
 
         this.indexNames = store.indexNames;
         return res;
@@ -532,10 +656,11 @@ define("eidb/promise",
     __exports__.RSVP = RSVP;
   });
 define("eidb/transaction",
-  ["eidb/object_store","exports"],
-  function(__dependency1__, __exports__) {
+  ["eidb/object_store","eidb/error_handling","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
     "use strict";
     var ObjectStore = __dependency1__.ObjectStore;
+    var _handleErrors = __dependency2__._handleErrors;
 
     // transactions have onerror, onabort, and oncomplete events
     var Transaction = function(idbTransaction) {
@@ -547,6 +672,12 @@ define("eidb/transaction",
 
       objectStore: function(name) {
         return new ObjectStore(this._idbTransaction.objectStore(name));
+      },
+
+      abort: function() {
+        _handleErrors(this, function(self) {
+          return self._idbTransaction.abort();
+        });
       }
     };
 
@@ -554,10 +685,11 @@ define("eidb/transaction",
     __exports__.Transaction = Transaction;
   });
 define("eidb/utils",
-  ["eidb/promise","exports"],
-  function(__dependency1__, __exports__) {
+  ["eidb/promise","eidb/error_handling","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
     "use strict";
     var Promise = __dependency1__.Promise;
+    var _rsvpErrorHandler = __dependency2__._rsvpErrorHandler;
 
     function __instrument__(methodCallback) {
       if (__instrument__.setup) {
@@ -571,50 +703,58 @@ define("eidb/utils",
     }
 
     function _request(idbObj, method, args) {
-      var _args = args ? Array.prototype.slice.call(args) : null;
+      var EIDB = window.EIDB,
+          _args = args ? Array.prototype.slice.call(args) : null;
 
       return new Promise(function(resolve, reject) {
         var req = idbObj[method].apply(idbObj, _args);
 
         req.onsuccess = function(evt) {
+          EIDB.error = null;
           resolve(evt.target.result);
         };
         req.onerror = function(evt) {
           reject(evt);
         };
+      }).then(null, function(e) {
+        _rsvpErrorHandler(e, idbObj, method, args);
       });
     }
 
-     function _openCursor(idbObj, range, direction, onsuccess, opts) {
-        var method = opts && opts.keyOnly ? "openKeyCursor" : "openCursor";
+    function _openCursor(idbObj, range, direction, onsuccess, opts) {
+      var EIDB = window.EIDB,
+          method = opts && opts.keyOnly ? "openKeyCursor" : "openCursor";
 
-        range = range || null;
-        direction = direction || 'next';
+      range = range || null;
+      direction = direction || 'next';
 
-        return new Promise(function(resolve, reject) {
-          var req = idbObj[method](range, direction);
+      return new Promise(function(resolve, reject) {
+        var req = idbObj[method](range, direction);
 
-          req.onsuccess = function(event) {
-            onsuccess(event.target.result, resolve);
-          };
-          req.onerror = function(event) {
-            reject(event);
-          };
-        });
-      }
+        req.onsuccess = function(event) {
+          EIDB.error = null;
+          onsuccess(event.target.result, resolve);
+        };
+        req.onerror = function(event) {
+          reject(event);
+        };
+      }).then(null, function(e) {
+        _rsvpErrorHandler(e, idbObj, method, [range, direction, onsuccess, opts]);
+      });
+    }
 
-      function _getAll(idbObj, range, direction) {
-        var res = [];
+    function _getAll(idbObj, range, direction) {
+      var res = [];
 
-        return _openCursor(idbObj, range, direction, function(cursor, resolve) {
-          if (cursor) {
-            res.push(cursor.value);
-            cursor.continue();
-          } else {
-            resolve(res);
-          }
-        });
-      }
+      return _openCursor(idbObj, range, direction, function(cursor, resolve) {
+        if (cursor) {
+          res.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(res);
+        }
+      });
+    }
 
 
     __exports__.__instrument__ = __instrument__;
@@ -624,8 +764,8 @@ define("eidb/utils",
     __exports__._getAll = _getAll;
   });
 define("eidb",
-  ["eidb/eidb","eidb/database","eidb/object_store","eidb/transaction","eidb/index","eidb/utils","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
+  ["eidb/eidb","eidb/database","eidb/object_store","eidb/transaction","eidb/index","eidb/utils","eidb/error_handling","eidb/promise","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __dependency7__, __dependency8__, __exports__) {
     "use strict";
     var open = __dependency1__.open;
     var _delete = __dependency1__._delete;
@@ -648,10 +788,21 @@ define("eidb",
     var Transaction = __dependency4__.Transaction;
     var Index = __dependency5__.Index;
     var __instrument__ = __dependency6__.__instrument__;
+    var LOG_ERRORS = __dependency7__.LOG_ERRORS;
+    var error = __dependency7__.error;
+    var registerErrorHandler = __dependency7__.registerErrorHandler;
+    var RSVP = __dependency8__.RSVP;
 
     __exports__.delete = _delete;
 
+    RSVP.EventTarget.mixin(__exports__);
+
+    __exports__.on('error', function(e) {
+      registerErrorHandler.notify(e);
+    });
+
     // TODO - don't make __instrument__ public. (For now, need it for testing.)
+    // TODO - probably don't need to export error. But will need to fix error_hanlding_test.js
 
     __exports__.open = open;
     __exports__.version = version;
@@ -673,6 +824,9 @@ define("eidb",
     __exports__.Transaction = Transaction;
     __exports__.Index = Index;
     __exports__.__instrument__ = __instrument__;
+    __exports__.LOG_ERRORS = LOG_ERRORS;
+    __exports__.error = error;
+    __exports__.registerErrorHandler = registerErrorHandler;
   });
 window.EIDB = requireModule("eidb");
 })(window);
