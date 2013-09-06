@@ -1,7 +1,8 @@
 var DatabaseRoute = Ember.Route.extend({
   model: function(params) {
-    return EIDB.open(params.database_name).then(function(db) {
-      return db;
+    return EIDB.openOnly(params.database_name).then(function(db) {
+      if (db) { return db; }
+      return null;
     });
   },
 
@@ -11,6 +12,13 @@ var DatabaseRoute = Ember.Route.extend({
     controller.set('content', model);
     controller.set('controllers.application.currentDbName', model.name);
     controller.set('controllers.application.currentStoreName', null);
+  },
+
+  redirect: function(model) {
+    if (!model) {
+      this.set('controller.controllers.application.errorMessage', 'That database does not exist');
+      this.transitionTo('index');
+    }
   }
 });
 

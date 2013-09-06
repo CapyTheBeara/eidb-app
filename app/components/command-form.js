@@ -16,18 +16,19 @@ var CommandFormComponent = Ember.Component.extend({
         controller = this,
         command = this.get('eidbCommand');
 
+    if (command.length === 0) { return false; }
+
     command = "EIDB." + command;
     console.log('Executing command:', command);
 
     try {
       req = eval(command).then(function(res) {
         console.log("Command result:", res);
-
-        controller.sendAction();
       });
+
+      this.sendAction();
     } catch (e) {
-      console.log(eval(command));
-      controller.sendAction();
+      EIDB.trigger('error', e);
     }
 
     this.set('eidbCommand', null);

@@ -5,6 +5,7 @@ var ApplicationController = Ember.ArrayController.extend({
   commandLastSubmitted: null,
   currentDbName: null,
   currentStoreName: null,
+  errorMessage: null,
 
   setContent: function() {
     var controller = this;
@@ -29,6 +30,18 @@ var ApplicationController = Ember.ArrayController.extend({
       }
     },
 
+    eidbErrorReceived: function(e) {
+      var message = "An error occurred";
+      if (e && e.name) {
+        message = message + " : " + e.name;
+      }
+      if (e && e.message) {
+        message = message + " - " + e.message;
+      }
+
+      this.set('errorMessage', message);
+    },
+
     deleteAllDbs: function() {
       var controller = this;
 
@@ -39,12 +52,6 @@ var ApplicationController = Ember.ArrayController.extend({
       }
     }
   }
-});
-
-// this will allow the command list to be closed when clicking
-// outside of the Ember app
-$('html').click(function(evt) {
-  Ember.Instrumentation.instrument('html.click', evt);
 });
 
 export default ApplicationController;

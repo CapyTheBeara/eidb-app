@@ -7,6 +7,9 @@
                        currentDbName = currentDbName
                        currentStoreName = currentStoreName}}
     </li>
+    {{#if errorMessage}}
+      <li class='alert alert-danger'>{{errorMessage}}</li>
+    {{/if}}
 </ul>
 
 <section class="tree col-md-2">
