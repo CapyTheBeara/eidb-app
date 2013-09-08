@@ -8,7 +8,6 @@ var DatabaseRoute = Ember.Route.extend({
 
   setupController: function(controller, model) {
     controller.set('needs', ['application']);
-
     controller.set('content', model);
     controller.set('controllers.application.currentDbName', model.name);
     controller.set('controllers.application.currentStoreName', null);
@@ -16,7 +15,7 @@ var DatabaseRoute = Ember.Route.extend({
 
   redirect: function(model) {
     if (!model) {
-      this.set('controller.controllers.application.errorMessage', 'That database does not exist');
+      this.set('controller.controllers.application.errorMessage', 'That database does not exist');  // TODO - use userMessages instead of errorMessage ?
       this.transitionTo('index');
     }
   }

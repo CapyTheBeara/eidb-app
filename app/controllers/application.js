@@ -6,6 +6,7 @@ var ApplicationController = Ember.ArrayController.extend({
   currentDbName: null,
   currentStoreName: null,
   errorMessage: null,
+  notifyMessage: null,
 
   setContent: function() {
     var controller = this;
@@ -16,22 +17,22 @@ var ApplicationController = Ember.ArrayController.extend({
   }.observes('commandLastSubmitted'),
 
   actions: {
-    hideCommandList: function() {
-      this.set('commandListVisible', false);
+    markCommandSubmitted: function() {  // triggered by command-form component
+      this.set('errorMessage', null);
     },
 
-    commandSubmitted: function() {
+    markCommandResulted: function() {  // triggered by command-form component
       this.set('commandLastSubmitted', new Date());
     },
 
-    htmlClicked: function(evt) {
+    handleHtmlClick: function(evt) {  // via Instrumentation in ApplicationRoute
       if ($('#command-form-li').has(evt.target).length < 1) {
-        this.send('hideCommandList');
+        this.set('commandListVisible', false);
       }
     },
 
-    eidbErrorReceived: function(e) {
-      var message = "An error occurred";
+    displayError: function(e) {  // via Instrumentation in ApplicationRoute
+      var message = "Error";
       if (e && e.name) {
         message = message + " : " + e.name;
       }
@@ -42,7 +43,7 @@ var ApplicationController = Ember.ArrayController.extend({
       this.set('errorMessage', message);
     },
 
-    deleteAllDbs: function() {
+    deleteAllDbs: function() {  // via _tree template
       var controller = this;
 
       if (window.confirm('Are you sure')) {

@@ -10,7 +10,7 @@ var ApplicationRoute = Ember.Route.extend({
 
     Ember.Instrumentation.subscribe('html.click', {
       before: function(name, timestamp, payload) {
-        controller.send('htmlClicked', payload);
+        controller.send('handleHtmlClick', payload);
       },
       after: function(){}
     });
@@ -21,7 +21,7 @@ var ApplicationRoute = Ember.Route.extend({
 
     Ember.Instrumentation.subscribe('eidb.error', {
       before: function(name, timestamp, payload) {
-        controller.send('eidbErrorReceived', payload);
+        controller.send('displayError', payload);
       },
       after: function(){}
     });

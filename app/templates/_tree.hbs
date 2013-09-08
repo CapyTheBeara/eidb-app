@@ -2,7 +2,7 @@
 {{#each db in content}}
     <li>
     {{#link-to 'database' db.name}}
-        {{db.name}} (v{{db.version}})
+        {{db.name}} <span class="badge">v{{db.version}}</span>
     {{/link-to}}
         <ul>
         {{#each store in db.stores}}
@@ -17,5 +17,6 @@
 {{/each}}
 </ul>
 
-<button class='btn btn-danger btn-xs' {{action 'deleteAllDbs'}}>Remove all databases</button>
-
+{{#if content}}
+    <button class='btn btn-danger btn-xs' {{action 'deleteAllDbs'}}>Remove all databases</button>
+{{/if}}
