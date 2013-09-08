@@ -1,16 +1,25 @@
-<form class='command' {{action 'submitCommand' on='submit'}}>
-   {{view Ember.TextField id='command-input'
-                          valueBinding='eidbCommand'
-                          placeholder='Enter EIDB command'
-                          focus-in="showCommandList"
-                          focus-out='hideCommandList'}}
-    <button type='submit'>Go</button>
-</form>
+<form class='command form-inline' {{action 'submitCommand' on='submit'}}>
 
-<div class='command-list-container'>
-    <ul {{bind-attr class=':command-list commandListVisible::hide'}}>
-    {{#each command in commandList}}
-        <li {{action 'setCommand' command}}>{{command}}</li>
-    {{/each}}
+    {{view Ember.Select contentBinding='commandList'
+                        valueBinding='model.command'
+                        prompt='Select an EIDB command'
+                        class='form-control input-sm'
+                        id='command-select'}}
+
+    {{#if model.command}}
+        {{#each param in model.params}}
+            {{view 'command_param_input' class='form-group'
+                                         modelBinding=model
+                                         placeholderBinding = param}}
+        {{/each}}
+    {{/if}}
+
+    <button type='submit'>Go</button>
+    {{#if errors}}
+    <ul>
+        {{#each error in errors}}
+            <li class='alert alert-danger'>{{error.name}} {{error.value}}</li>
+        {{/each}}
     </ul>
-</div>
+    {{/if}}
+</form>

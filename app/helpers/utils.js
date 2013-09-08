@@ -4,6 +4,16 @@ function _domStringListToArray(list) {
   return arr;
 }
 
+function _eidbCommands() {
+  var commands = [];
+  for (var prop in EIDB) {
+    if (EIDB.hasOwnProperty(prop) && prop[0] !== prop[0].toUpperCase()) {
+      commands.push(prop);
+    }
+  }
+  return commands.sort();
+}
+
 function _eidbGetTree(callback) {
   EIDB.webkitGetDatabaseNames().then(function(names) {
     names = _domStringListToArray(names);
@@ -54,4 +64,4 @@ function _eidbDeleteAllDbs(callback) {
   });
 }
 
-export { _domStringListToArray, _eidbGetTree, _eidbGetObjectStores, _eidbDeleteAllDbs };
+export { _eidbCommands, _eidbGetTree, _eidbGetObjectStores, _eidbDeleteAllDbs };
