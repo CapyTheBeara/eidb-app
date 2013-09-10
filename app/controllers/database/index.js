@@ -16,7 +16,17 @@ var DatabaseIndexController = Ember.ArrayController.extend({
     _eidbGetObjectStores(db.name, function(stores) {
       controller.set('stores', stores);
     });
-  }.observes('db', 'controllers.application.commandLastSubmitted')
+  }.observes('db', 'controllers.application.commandLastSubmitted'),
+
+  deleteDatabase: function() {
+    if (window.confirm('Are you sure?')) {
+      var dbName = this.get('controllers.application.currentDbName');
+      EIDB.delete(dbName);
+
+      this.set('controllers.application.currentDbName', null);
+      this.transitionToRoute('index');
+    }
+  }
 
 });
 
