@@ -14,7 +14,7 @@ var ApplicationController = Ember.ArrayController.extend({
     _eidbGetTree(function(res) {
       controller.set('content', res);
     });
-  }.observes('commandLastSubmitted'),
+  }.observes('commandLastSubmitted', 'currentDbName'),
 
   actions: {
     markCommandSubmitted: function() {  // triggered by command-form component

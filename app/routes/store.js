@@ -1,11 +1,11 @@
 var StoreRoute = Ember.Route.extend({
   model: function(params) {
-    return {name: 'cats'};
+    return params.store_name;
   },
 
-  setupController: function(controller, model) {
-    controller.set('content', model);
-    controller.set('controllers.application.currentStoreName', model.name);
+  setupController: function(controller, storeName) {
+    controller.set('storeName', storeName);
+    controller.set('controllers.application.currentStoreName', storeName);
   }
 });
 

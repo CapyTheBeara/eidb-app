@@ -1,6 +1,8 @@
 var StoreController = Ember.ObjectController.extend({
-  needs: ['application']
+  needs: ['application', 'database'],
 
+  storeName: null,
+  db: Ember.computed.alias('controllers.database.content')
 });
 
 export default StoreController;
