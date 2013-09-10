@@ -2,19 +2,44 @@ import { _eidbCommands } from 'appkit/helpers/utils';
 import CommandForm from 'appkit/models/command_form';
 
 var CommandFormComponent = Ember.Component.extend({
-  model: CommandForm.create(),
+  model: null,
   errors: Ember.computed.alias('model.errors'),
+  modelResult: null,
+  result: null,
+
+  init: function() {
+    this._super();
+    this.createModel();
+  },
+
+  createModel: function() {
+    var dbName = this.get('currentDbName'),
+        storeName = this.get('currentStoreName'),
+        form = CommandForm.create({
+          currentDbName: dbName,
+          currentStoreName: storeName
+        });
+
+    this.set('model', form);
+  },
+
+  resultChanged: function() {
+    var res = this.get('modelResult');
+    if (!res) { return; }
+
+    this.set('result', JSON.stringify(res, null, 4));
+  }.observes('modelResult'),
 
   commandList: function() {
     return _eidbCommands();
   }.property(),
 
   runCommand: function() {
-    var req, params,
-        resultMsg = "Command result:",
-        component = this,
+    var self = this,
         model = this.get('model'),
         command = this.get('model.command');
+
+    this.set('result', null);
 
     if (!this.get('commandList').contains(command)) {
       EIDB.trigger('error', {name: 'That is not a valid command'});
@@ -24,32 +49,24 @@ var CommandFormComponent = Ember.Component.extend({
     if (!model.get('isValid')) { return; }
 
     console.log('Executing command:', "EIDB." + command);
+    this.sendAction();
 
-    if (EIDB[command] instanceof Function) {
-      params = this.get('model.attributeValues');
-console.log(params);
-      req = EIDB[command].apply(null, params);
+    model.run().then(function(res) {
+      self.createModel();
 
-      if (typeof(req) === "object" && 'then' in req) {
-        req.then(function(res) {
-          component.sendAction('commandResulted');
-          console.log(resultMsg, res);
-        });
-      } else {
-        console.log(resultMsg, req);
-      }
-    } else {
-      console.log(resultMsg, EIDB[command]);
-    }
-
-    this.set('model.command', null);
-    this.set('model', CommandForm.create());
+      self.set('modelResult', res);
+      self.sendAction('commandResulted');
+    });
   },
 
   actions: {
     submitCommand: function(evt) {
       this.sendAction();
       this.runCommand();
+    },
+
+    hideResult: function() {
+      $('#command-result').hide();
     }
   }
 });

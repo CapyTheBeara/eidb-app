@@ -1,6 +1,6 @@
 var CommandInputField = Ember.TextField.extend({
   classNames: ['form-control'],
-  value: null,
+  value: Ember.computed.alias('parentView.value'),
   model: Ember.computed.alias('parentView.model'),
   placeholder: Ember.computed.alias('parentView.placeholder'),
 
@@ -11,6 +11,8 @@ var CommandInputField = Ember.TextField.extend({
     this.set("model." + param + ".value", value);
   }.observes('value')
 });
+
+/***************************************************/
 
 var CommandParamInput = Ember.ContainerView.extend({
   classNameBindings: ['isValid:has-success:has-error'],

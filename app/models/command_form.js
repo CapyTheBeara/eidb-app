@@ -2,6 +2,8 @@ import CommandAttribute from 'appkit/models/command_attribute';
 
 var CommandForm = Ember.Object.extend({
   command: null,
+  currentDbName: null,
+  currentStoreName: null,
   userMessages: null,
   attributes: [],
 
@@ -9,14 +11,32 @@ var CommandForm = Ember.Object.extend({
     this.set('attributes', []);
 
     var attr,
+        value = null,
         params = this.get('params'),
-        attrs = this.get('attributes');
+        attrs = this.get('attributes'),
+        dbName = this.get('currentDbName'),
+        storeName = this.get('currentStoreName'),
+        command = this.get('command');
 
     params.forEach(function(param) {
-      attr = CommandAttribute.create({name: param, form: this});
+      if (param === 'dbName') { value = dbName; }
+      if (param === 'storeName' && command !== 'createObjectStore') {
+        value = storeName;
+      }
+
+      attr = CommandAttribute.create({
+        name: param,
+        form: this,
+        value: value
+      });
+
+      value = null;
       this.set(param, attr);
       attrs.pushObject(attr);
+
     }, this);
+
+    this.set('attributes', attrs);
 
   }.observes('command'),
 
@@ -32,7 +52,7 @@ var CommandForm = Ember.Object.extend({
       if (paramMatch) {
         match = paramMatch[1];
         if (match === '') { return []; }
-        return match.split(',');
+        return match.replace(/\s/g, '').split(',');
       }
       return [];
     }
@@ -50,7 +70,27 @@ var CommandForm = Ember.Object.extend({
   isValid: function() {
     if (this.get('errors').length === 0) { return true; }
     return false;
-  }.property()
+  }.property(),
+
+  run: function() {
+    var req,
+        command = this.get('command'),
+        attrVals = this.get('attributeValues');
+
+    return new Ember.RSVP.Promise(function(resolve, reject) {
+      if (EIDB[command] instanceof Function) {
+        req = EIDB[command].apply(null, attrVals);
+
+        if (typeof(req) === "object" && 'then' in req) {
+          return resolve(req.then(function(res) { return res; }));
+        }
+        return resolve(req);
+
+      }
+      return resolve(EIDB[command]);
+
+    });
+  }
 });
 
 export default CommandForm;

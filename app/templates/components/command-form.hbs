@@ -7,19 +7,27 @@
                         id='command-select'}}
 
     {{#if model.command}}
-        {{#each param in model.params}}
+        {{#each attr in model.attributes}}
             {{view 'command_param_input' class='form-group'
                                          modelBinding=model
-                                         placeholderBinding = param}}
+                                         valueBinding=attr.value
+                                         placeholderBinding=attr.name}}
         {{/each}}
     {{/if}}
 
     <button type='submit'>Go</button>
-    {{#if errors}}
-    <ul>
-        {{#each error in errors}}
-            <li class='alert alert-danger'>{{error.name}} {{error.value}}</li>
-        {{/each}}
-    </ul>
-    {{/if}}
 </form>
+
+{{#if errors}}
+<ul>
+    {{#each error in errors}}
+        <li class='alert alert-danger'>{{error.name}} {{error.value}}</li>
+    {{/each}}
+</ul>
+{{/if}}
+
+{{#if result}}
+<div id="command-result" class="alert alert-success" {{action 'hideResult'}}>
+    Command result: <pre><code>{{unbound result}}</code></pre>
+</div>
+{{/if}}

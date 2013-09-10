@@ -85,3 +85,16 @@ input.param-input {
 li.alert {
   list-style: none;
 }
+
+#command-result {
+  position: absolute;
+  box-shadow: 2px 2px 1px green;
+
+}
+
+#command-result pre {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 10;
+}
