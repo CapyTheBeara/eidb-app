@@ -1,4 +1,4 @@
-// monocle/dev branch 9/5/13
+// monocle/dev branch 9/16/13
 
 (function(globals) {
 var define, requireModule;
@@ -152,10 +152,10 @@ define("eidb/eidb",
     var __instrument__ = __dependency4__.__instrument__;
     var _rsvpErrorHandler = __dependency5__._rsvpErrorHandler;
 
-    function open(name, version, upgradeCallback, opts) {
+    function open(dbName, version, upgradeCallback, opts) {
       return new Promise(function(resolve, reject) {
         var EIDB = window.EIDB,
-            req = version ? indexedDB.open(name, version) : indexedDB.open(name);
+            req = version ? indexedDB.open(dbName, version) : indexedDB.open(dbName);
 
         req.onsuccess = function(event) {
           EIDB.error = null;
@@ -180,16 +180,17 @@ define("eidb/eidb",
           if (upgradeCallback) { upgradeCallback(ret); }
         };
       }).then(null, function(e) {
-        _rsvpErrorHandler(e, indexedDB, "open", [name, version, upgradeCallback, opts]);
+        _rsvpErrorHandler(e, indexedDB, "open", [dbName, version, upgradeCallback, opts]);
       });
     }
 
-    function _delete(name) {
+    function _delete(dbName) {
       return _request(indexedDB, "deleteDatabase", arguments);
     }
 
     function version(dbName){
-      return open(dbName).then(function(db) {
+      return openOnly(dbName).then(function(db) {
+        if (!db) { return null; }
         return db.version;
       });
     }
@@ -198,12 +199,12 @@ define("eidb/eidb",
       return _request(indexedDB, "webkitGetDatabaseNames");
     }
 
-    function getDatabaseNamesSupported() {
+    function isGetDatabaseNamesSupported() {
       return 'webkitGetDatabaseNames' in indexedDB;
     }
 
     function getDatabaseNames() {
-      if (getDatabaseNamesSupported()) {
+      if (isGetDatabaseNamesSupported()) {
         return webkitGetDatabaseNames();
       }
 
@@ -212,7 +213,7 @@ define("eidb/eidb",
     }
 
     function openOnly(dbName, version, upgradeCallback, opts) {
-      if (getDatabaseNamesSupported()) {
+      if (isGetDatabaseNamesSupported()) {
         return getDatabaseNames().then(function(names) {
           if (names.contains(dbName) && !version) {
             return open(dbName, version, upgradeCallback, opts);
@@ -236,6 +237,12 @@ define("eidb/eidb",
     }
 
     function bumpVersion(dbName, upgradeCallback, opts) {
+      if (!dbName) {
+        return new Promise(function(resolve){
+          resolve(null);
+        });
+      }
+
       return open(dbName).then(function(db) {
         return open(dbName, db.version + 1, function(res) {
           if (upgradeCallback) { upgradeCallback(res); }
@@ -333,6 +340,12 @@ define("eidb/eidb",
       });
     }
 
+    function getIndexes(dbName, storeName) {
+      return _storeAction(dbName, storeName, function(store) {
+        return store.getIndexes();
+      });
+    }
+
 
     __exports__.open = open;
     __exports__._delete = _delete;
@@ -340,7 +353,7 @@ define("eidb/eidb",
     __exports__.bumpVersion = bumpVersion;
     __exports__.version = version;
     __exports__.webkitGetDatabaseNames = webkitGetDatabaseNames;
-    __exports__.getDatabaseNamesSupported = getDatabaseNamesSupported;
+    __exports__.isGetDatabaseNamesSupported = isGetDatabaseNamesSupported;
     __exports__.getDatabaseNames = getDatabaseNames;
     __exports__.createObjectStore = createObjectStore;
     __exports__.deleteObjectStore = deleteObjectStore;
@@ -350,6 +363,8 @@ define("eidb/eidb",
     __exports__.putRecord = putRecord;
     __exports__.deleteRecord = deleteRecord;
     __exports__.getAll = getAll;
+    __exports__.getIndexes = getIndexes;
+    __exports__._storeAction = _storeAction;
   });
 define("eidb/error_handling",
   ["exports"],
@@ -442,6 +457,245 @@ define("eidb/error_handling",
     __exports__._handleErrors = _handleErrors;
     __exports__._rsvpErrorHandler = _rsvpErrorHandler;
   });
+define("eidb/find",
+  ["eidb/eidb","exports"],
+  function(__dependency1__, __exports__) {
+    "use strict";
+    var _storeAction = __dependency1__._storeAction;
+
+    function _mergeObj(obj1, obj2) {
+      var attr, obj3 = {};
+      for (attr in obj1) { obj3[attr] = obj1[attr]; }
+      for (attr in obj2) { obj3[attr] = obj2[attr]; }
+      return obj3;
+    }
+
+    function _normalizeArgs(args) {
+      if (args.length === 1) { return args[0]; }
+
+      var obj = {};
+      obj[args[0]] = args[1];
+      return obj;
+    }
+
+    // used for a range that isn't supposed to include the lower or
+    // upper bound. (Multiple attribute ranges will include the lower
+    // or upper bound.)
+    function _createBoundFilter(attr, target) {
+      return function(value) {
+        if (value[attr] === target) { return false; }
+        return true;
+      };
+    }
+
+    var Range = window.IDBKeyRange;
+
+    var _rangeMap = {
+      eq: function(val) {
+        return Range.only(val);
+      },
+
+      gt: function(val) {
+        return Range.lowerBound(val, true);
+      },
+
+      gte: function(val) {
+        return Range.lowerBound(val);
+      },
+
+      lt: function(val) {
+        return Range.upperBound(val, true);
+      },
+
+      lte: function(val) {
+        return Range.upperBound(val);
+      }
+    };
+
+    var Query = function(dbName, storeName) {
+      this.dbName = dbName;
+      this.storeName = storeName;
+      this.filters = [];
+      this.ranges = {};
+      this.rangeFilters = [];
+    };
+
+    Query.prototype = {
+      storindex: null,
+      range: null,
+
+      _addRanges: function(type, _args) {
+        var ranges = {},
+            args = _normalizeArgs(_args);
+
+        for (var key in args) {
+          ranges[key] = _rangeMap[type](args[key]);
+        }
+
+        this.ranges = _mergeObj(this.ranges, ranges);
+      },
+
+      eq: function() {
+        this._addRanges('eq', arguments);
+        return this;
+      },
+
+      gt: function() {
+        this._addRanges('gt', arguments);
+        return this;
+      },
+
+      gte: function() {
+        this._addRanges('gte', arguments);
+        return this;
+      },
+
+      lt: function() {
+        this._addRanges('lt', arguments);
+        return this;
+      },
+
+      lte: function() {
+        this._addRanges('lte', arguments);
+        return this;
+      },
+
+      filter: function(fn) {
+        this.filters.push(fn);
+        return this;
+      },
+
+      match: function(key, regex) {
+        return this.filter(function(value) {
+          return value[key].match(regex);
+        });
+      },
+
+      _isRangeNeeded: function() {
+        return Object.keys(this.ranges).length > 0;
+      },
+
+      setStorindex: function(store, callback) {
+        var storindex, idxName,
+            self = this,
+            keys = Object.keys(this.ranges),
+            path = keys.length === 1 ? keys[0] : keys;
+
+        store.getIndexes().forEach(function(index) {
+          if (index.hasKeyPath(path)) {
+            storindex = index;
+          }
+        }, this);
+
+        if (!storindex) {
+          if (this._isRangeNeeded() && !store.hasKeyPath(path)) {
+            keys.sort();
+            idxName = keys.join("_");
+
+            return window.EIDB.createIndex(this.dbName, store.name, idxName, keys).then(function(db) {
+              self.storindex = db.objectStore(store.name).index(idxName);
+              return callback();
+            });
+          } else {
+            storindex = store;
+          }
+        }
+
+        this.storindex = storindex;
+        return callback();
+      },
+
+      setRange: function() {
+        if (!this._isRangeNeeded()) { return null; }
+
+        var attr, lower, upper, range, filter,
+            ranges = this.ranges,
+            keyPath = this.storindex.keyPath,
+            bounds = {lower: [], upper: []};
+
+        if (Object.keys(ranges).length === 1) {
+          return this.range = ranges[keyPath];
+        }
+
+        for (var i=0; i < keyPath.length; i++) {
+          attr = keyPath[i];
+          range = ranges[attr];
+          lower = range.lower;
+          upper = range.upper;
+
+          // TODO - support Dates
+          if (upper === undefined) {
+            if (range.lowerOpen) {
+              filter = _createBoundFilter(attr, range.lower);
+              this.filters.push(filter);
+            }
+
+            if (typeof lower === 'string') { upper = String.fromCharCode(65535); }
+            else if (typeof lower === 'number') { upper = Infinity; }
+          }
+
+          if (lower === undefined) {
+            if (range.upperOpen) {
+              filter = _createBoundFilter(attr, range.upper);
+              this.filters.push(filter);
+            }
+
+            if (typeof upper === 'string') { lower = String.fromCharCode(0); }
+            else if (typeof upper === 'number') { lower = -Infinity; }
+          }
+
+          bounds['lower'].push(lower);
+          bounds['upper'].push(upper);
+        }
+
+        return this.range = Range.bound(bounds.lower, bounds.upper);
+      },
+
+      run: function() {
+        var self = this;
+
+        return _storeAction(this.dbName, this.storeName, function(store) {
+          return self.setStorindex(store, function() {
+            self.setRange();
+            return self._runCursor();
+          });
+        });
+      },
+
+      _runCursor: function() {
+        var hit,
+            range = this.range,
+            filters = this.filters,
+            results = [];
+
+        return this.storindex.openCursor(range, null, function(cursor, resolve) {
+          if (cursor) {
+            var value = cursor.value;
+
+            if (filters.length > 0) {
+              hit = filters.every(function(filter) { return filter(value); });
+              if (hit) { results.push(value); }
+            }
+            else { results.push(value); }
+
+            cursor.continue();
+          }
+          else { resolve(results); }
+        });
+      }
+    };
+
+    Query.prototype.equal = Query.prototype.eq;
+
+    function find(dbName, storeName, params) {
+      var query = new Query(dbName, storeName);
+      if (params) { return query.equal(params).run(); }
+      return query;
+    }
+
+
+    __exports__.find = find;
+  });
 define("eidb/index",
   ["eidb/promise","eidb/utils","exports"],
   function(__dependency1__, __dependency2__, __exports__) {
@@ -450,12 +704,13 @@ define("eidb/index",
     var _request = __dependency2__._request;
     var _openCursor = __dependency2__._openCursor;
     var _getAll = __dependency2__._getAll;
+    var _hasKeyPath = __dependency2__._hasKeyPath;
 
     var Index = function(idbIndex, store) {
       this._idbIndex = idbIndex;
       this.name = idbIndex.name;
       this.objectStore = store;
-      this.keyPath = idbIndex.keyPath;
+      this.keyPath = idbIndex.keyPath;  // TODO - normalize to Array
       this.multiEntry = idbIndex.multiEntry;
       this.unique = idbIndex.unique;
     };
@@ -490,6 +745,10 @@ define("eidb/index",
 
       getAll: function(range, direction) {
         return _getAll(this._idbIndex, range, direction);
+      },
+
+      hasKeyPath: function(path) {
+        return _hasKeyPath(this, path);
       }
     };
 
@@ -515,11 +774,12 @@ define("eidb/object_store",
     var _request = __dependency3__._request;
     var _openCursor = __dependency3__._openCursor;
     var _getAll = __dependency3__._getAll;
+    var _hasKeyPath = __dependency3__._hasKeyPath;
     var _handleErrors = __dependency4__._handleErrors;
 
     var ObjectStore = function(idbObjectStore) {
       this._idbObjectStore = idbObjectStore;
-      this.keyPath = idbObjectStore.keyPath;
+      this.keyPath = idbObjectStore.keyPath;  // TODO - normalize to Array
       this.indexNames = idbObjectStore.indexNames;
       this.name = idbObjectStore.name;
       this.autoIncrement = idbObjectStore.autoIncrement;
@@ -631,6 +891,23 @@ define("eidb/object_store",
 
         this.indexNames = store.indexNames;
         return res;
+      },
+
+      getIndexes: function() {
+        var name,
+            indexes = [],
+            indexNames = this.indexNames;
+
+        for (var i = 0; i < indexNames.length; i++) {
+          name = indexNames[i];
+          indexes.push(this.index(name));
+        }
+
+        return indexes;
+      },
+
+      hasKeyPath: function(path) {
+        return _hasKeyPath(this, path);
       }
     };
 
@@ -756,22 +1033,63 @@ define("eidb/utils",
       });
     }
 
+    function _domStringListToArray(list) {
+      var arr = [];
+      for (var i = 0; i < list.length; i++) { arr[i] = list[i]; }
+      return arr;
+    }
+
+    function _hasKeyPath(storindex, path) {
+      var keyPathContainsPath, hit, keyPathEl,
+          keyPath = storindex.keyPath;
+
+      if (!keyPath) { return false; }
+      if (typeof keyPath === "string") { return keyPath === path; }
+      if (!(path instanceof Array)) { return false; }
+
+      if (!(keyPath instanceof Array)) {  // Chrome returns a DOMStringList, Firefox returns an array
+        keyPath = _domStringListToArray(keyPath);
+      }
+
+      keyPathContainsPath = path.every(function(el) {
+        return keyPath.some(function(_el) {
+          return el === _el;
+        });
+      });
+
+      if (!keyPathContainsPath) { return false; }
+
+      function comp(el) {
+        return el === keyPathEl;
+      }
+
+      for (var i=0; i < keyPath.length; i++) {
+        keyPathEl = keyPath[i];
+        hit = path.some(comp);
+        if (!hit) { return false; }
+      }
+
+      return true;
+    }
+
 
     __exports__.__instrument__ = __instrument__;
     __exports__._warn = _warn;
     __exports__._request = _request;
     __exports__._openCursor = _openCursor;
     __exports__._getAll = _getAll;
+    __exports__._domStringListToArray = _domStringListToArray;
+    __exports__._hasKeyPath = _hasKeyPath;
   });
 define("eidb",
-  ["eidb/eidb","eidb/database","eidb/object_store","eidb/transaction","eidb/index","eidb/utils","eidb/error_handling","eidb/promise","exports"],
-  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __dependency7__, __dependency8__, __exports__) {
+  ["eidb/eidb","eidb/find","eidb/database","eidb/object_store","eidb/transaction","eidb/index","eidb/utils","eidb/error_handling","eidb/promise","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __dependency7__, __dependency8__, __dependency9__, __exports__) {
     "use strict";
     var open = __dependency1__.open;
     var _delete = __dependency1__._delete;
     var version = __dependency1__.version;
     var webkitGetDatabaseNames = __dependency1__.webkitGetDatabaseNames;
-    var getDatabaseNamesSupported = __dependency1__.getDatabaseNamesSupported;
+    var isGetDatabaseNamesSupported = __dependency1__.isGetDatabaseNamesSupported;
     var getDatabaseNames = __dependency1__.getDatabaseNames;
     var openOnly = __dependency1__.openOnly;
     var bumpVersion = __dependency1__.bumpVersion;
@@ -783,15 +1101,17 @@ define("eidb",
     var putRecord = __dependency1__.putRecord;
     var deleteRecord = __dependency1__.deleteRecord;
     var getAll = __dependency1__.getAll;
-    var Database = __dependency2__.Database;
-    var ObjectStore = __dependency3__.ObjectStore;
-    var Transaction = __dependency4__.Transaction;
-    var Index = __dependency5__.Index;
-    var __instrument__ = __dependency6__.__instrument__;
-    var LOG_ERRORS = __dependency7__.LOG_ERRORS;
-    var error = __dependency7__.error;
-    var registerErrorHandler = __dependency7__.registerErrorHandler;
-    var RSVP = __dependency8__.RSVP;
+    var getIndexes = __dependency1__.getIndexes;
+    var find = __dependency2__.find;
+    var Database = __dependency3__.Database;
+    var ObjectStore = __dependency4__.ObjectStore;
+    var Transaction = __dependency5__.Transaction;
+    var Index = __dependency6__.Index;
+    var __instrument__ = __dependency7__.__instrument__;
+    var LOG_ERRORS = __dependency8__.LOG_ERRORS;
+    var error = __dependency8__.error;
+    var registerErrorHandler = __dependency8__.registerErrorHandler;
+    var RSVP = __dependency9__.RSVP;
 
     __exports__.delete = _delete;
 
@@ -807,7 +1127,7 @@ define("eidb",
     __exports__.open = open;
     __exports__.version = version;
     __exports__.webkitGetDatabaseNames = webkitGetDatabaseNames;
-    __exports__.getDatabaseNamesSupported = getDatabaseNamesSupported;
+    __exports__.isGetDatabaseNamesSupported = isGetDatabaseNamesSupported;
     __exports__.getDatabaseNames = getDatabaseNames;
     __exports__.openOnly = openOnly;
     __exports__.bumpVersion = bumpVersion;
@@ -827,6 +1147,8 @@ define("eidb",
     __exports__.LOG_ERRORS = LOG_ERRORS;
     __exports__.error = error;
     __exports__.registerErrorHandler = registerErrorHandler;
+    __exports__.getIndexes = getIndexes;
+    __exports__.find = find;
   });
 window.EIDB = requireModule("eidb");
 })(window);
