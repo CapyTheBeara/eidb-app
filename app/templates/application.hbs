@@ -17,11 +17,12 @@
     {{/if}}
 </ul>
 
-<section class="tree col-md-2">
-  {{partial "tree"}}
-</section>
+<div class="row">
+  <section class="tree col-md-2">
+    {{partial "tree"}}
+  </section>
 
-
-<section class="details col-md-10'">
-  {{outlet}}
-</section>
+  <section class="details col-md-10'">
+    {{outlet}}
+  </section>
+</div>
