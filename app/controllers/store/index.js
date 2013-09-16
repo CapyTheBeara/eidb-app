@@ -14,7 +14,10 @@ var StoreIndexController = Ember.ArrayController.extend({
         storeName = this.get('storeName');
 
     if (storeName) {
-      EIDB.getAll(db.name, storeName).then(function(content) {
+      EIDB.getAll(db.name, storeName).then(function(_content) {
+        var content = _content.map(function(val) {
+          return JSON.stringify(val, null, 4);
+        });
         controller.set('content', content);
       });
     }
