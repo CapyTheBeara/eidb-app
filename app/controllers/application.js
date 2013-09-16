@@ -48,9 +48,36 @@ var ApplicationController = Ember.ArrayController.extend({
 
       if (window.confirm('Are you sure')) {
         _eidbDeleteAllDbs(function() {
-          controller.set('commandLastSubmitted', new Date());
+          controller.transitionToRoute('index');
         });
       }
+    },
+
+    generateExample: function() {
+      var self = this,
+          names = ['Stan', 'Kyle', 'Kenny', 'Eric', 'Butters'],
+          colors = ['red', 'green', 'blue'],
+          ages = [8, 9],
+          records = [],
+          dbName = 'eidb',
+          storeName = 'kids';
+
+      for (var i=0; i<100; i++) {
+        records.push({
+          name: names[i%names.length],
+          color: colors[i%colors.length],
+          age: ages[i%ages.length],
+        });
+      }
+
+      records.push({name: "Chef", color: "yellow", age: "unknown"});
+
+      EIDB.createObjectStore(dbName, storeName).then(function() {
+        return EIDB.addRecord(dbName, storeName, records);
+      }).then(function() {
+        self.set('commandLastSubmitted', new Date());
+        self.transitionToRoute('database', {database_name: dbName});
+      });
     }
   }
 });

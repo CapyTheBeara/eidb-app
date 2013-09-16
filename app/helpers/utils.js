@@ -19,7 +19,7 @@ function _eidbGetTree(callback) {
     names = _domStringListToArray(names);
 
     var reqs = names.map(function(name) {
-      return EIDB.open(name).then(function(db) {
+      return EIDB.openOnly(name).then(function(db) {
         var storeNames = _domStringListToArray(db.objectStoreNames)
                               .map(function(name) { return {name: name}; });
         return {
@@ -39,7 +39,7 @@ function _eidbGetTree(callback) {
 function _eidbGetObjectStores(dbName, callback) {
   var stores = [];
 
-  return EIDB.open(dbName).then(function(db) {
+  return EIDB.openOnly(dbName).then(function(db) {
     var names = _domStringListToArray(db.objectStoreNames);
 
     stores = names.map(function(name) {

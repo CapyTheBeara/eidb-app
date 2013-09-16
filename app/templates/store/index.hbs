@@ -1,12 +1,23 @@
+<div class="search">
+    Search: {{view Ember.Select contentBinding="recordAttributes"
+                                valueBinding="searchAttr"}}
+    {{view Ember.TextField valueBinding="eqValue"
+                           placeholder='Find an exact value'}}
+    or
+    {{view Ember.TextField valueBinding="matchValue"
+                           placeholder="Use a regular expression"}}
+    Number of records: {{content.length}}
+</div>
+
 <div class="values">
     <div class="col-sm-6 col-md-8">
-        <ul>
+        <ol>
         {{#each}}
             <li>
                 <pre><code>{{this}}</code></pre>
             </li>
         {{/each}}
-        </ul>
+        </ol>
     </div>
 </div>
 
