@@ -462,6 +462,7 @@ define("eidb/find",
   function(__dependency1__, __exports__) {
     "use strict";
     var _storeAction = __dependency1__._storeAction;
+    var _warn = __dependency1__._warn;
 
     function _mergeObj(obj1, obj2) {
       var attr, obj3 = {};
@@ -523,6 +524,8 @@ define("eidb/find",
     Query.prototype = {
       storindex: null,
       range: null,
+      getOne: false,
+      cursorDirection: 'next',
 
       _addRanges: function(type, _args) {
         var ranges = {},
@@ -591,8 +594,9 @@ define("eidb/find",
           if (this._isRangeNeeded() && !store.hasKeyPath(path)) {
             keys.sort();
             idxName = keys.join("_");
+            path = keys.length === 1 ? keys[0] : keys;
 
-            return window.EIDB.createIndex(this.dbName, store.name, idxName, keys).then(function(db) {
+            return window.EIDB.createIndex(this.dbName, store.name, idxName, path).then(function(db) {
               self.storindex = db.objectStore(store.name).index(idxName);
               return callback();
             });
@@ -651,8 +655,10 @@ define("eidb/find",
         return this.range = Range.bound(bounds.lower, bounds.upper);
       },
 
-      run: function() {
+      run: function(dir) {
         var self = this;
+
+        if (dir) { this.cursorDirection = dir; }
 
         return _storeAction(this.dbName, this.storeName, function(store) {
           return self.setStorindex(store, function() {
@@ -664,11 +670,13 @@ define("eidb/find",
 
       _runCursor: function() {
         var hit,
+            dir = this.cursorDirection,
+            getOne = this.getOne,
             range = this.range,
             filters = this.filters,
             results = [];
 
-        return this.storindex.openCursor(range, null, function(cursor, resolve) {
+        return this.storindex.openCursor(range, dir, function(cursor, resolve) {
           if (cursor) {
             var value = cursor.value;
 
@@ -678,10 +686,22 @@ define("eidb/find",
             }
             else { results.push(value); }
 
-            cursor.continue();
+            if (getOne && results.length > 0) { resolve(results[0]); }
+            else { cursor.continue(); }
           }
           else { resolve(results); }
         });
+      },
+
+      first: function() {
+        this.getOne = true;
+        return this.run();
+      },
+
+      last: function() {
+        this.cursorDirection = 'prev';
+        this.getOne = true;
+        return this.run();
       }
     };
 
