@@ -6,7 +6,14 @@ var CommandAttribute = Ember.Object.extend({
   error: null,
 
   _valueDidChange: function() {
-    this.set('_value', this.get('value'));
+    var value = this.get('value'),
+        number = Number(value);
+
+    if (!isNaN(number)) {
+      return this.set('_value', number);
+    }
+
+    this.set('_value', value);
   }.observes('value'),
 
   isValid: function() {
