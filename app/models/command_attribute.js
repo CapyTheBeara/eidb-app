@@ -2,7 +2,12 @@ var CommandAttribute = Ember.Object.extend({
   name: "",
   form: null,
   value: null,
+  _value: null,
   error: null,
+
+  _valueDidChange: function() {
+    this.set('_value', this.get('value'));
+  }.observes('value'),
 
   isValid: function() {
     var value = this.get("value");
@@ -20,7 +25,7 @@ var CommandAttribute = Ember.Object.extend({
     if (value.match(/}/)) {
       try {
         value = eval("(" + value + ")");    /***** eval ******/
-        this.set('value', value);
+        this.set('_value', value);
         return true;
       } catch (e) {
         var error = {name: name + " syntax error", error: e, message: e.message};

@@ -26,9 +26,9 @@ var CommandForm = Ember.Object.extend({
 
       attr = CommandAttribute.create({
         name: param,
-        form: this,
-        value: value
+        form: this
       });
+      attr.set('value', value);
 
       value = null;
       this.set(param, attr);
@@ -60,7 +60,7 @@ var CommandForm = Ember.Object.extend({
   }.property('command'),
 
   attributeValues: function() {
-    return this.get('attributes').getEach('value').compact();
+    return this.get('attributes').getEach('_value').compact();
   }.property(),
 
   errors: function() {

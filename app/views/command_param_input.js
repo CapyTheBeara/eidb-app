@@ -3,13 +3,6 @@ var CommandInputField = Ember.TextField.extend({
   value: Ember.computed.alias('parentView.value'),
   model: Ember.computed.alias('parentView.model'),
   placeholder: Ember.computed.alias('parentView.placeholder'),
-
-  setModelAttribute: function() {
-    var param = this.get('placeholder'),
-        value = this.get('value');
-
-    this.set("model." + param + ".value", value);
-  }.observes('value')
 });
 
 /***************************************************/
