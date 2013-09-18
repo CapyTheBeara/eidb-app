@@ -33,7 +33,8 @@
     "fillIn",
     "click",
     "find",
-    "EIDB"
+    "EIDB",
+    "DS"
   ],
   "node" : false,
   "browser" : false,

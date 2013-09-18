@@ -64,4 +64,4 @@ function _eidbDeleteAllDbs(callback) {
   });
 }
 
-export { _eidbCommands, _eidbGetTree, _eidbGetObjectStores, _eidbDeleteAllDbs };
+export { _eidbCommands, _eidbGetTree, _eidbGetObjectStores, _eidbDeleteAllDbs, _domStringListToArray };

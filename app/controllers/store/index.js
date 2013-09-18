@@ -4,6 +4,8 @@ function _numberify(val) {
   return val;
 }
 
+var confirm = window.confirm;
+
 var StoreIndexController = Ember.ArrayController.extend({
   needs: ['application', 'store'],
   db: Ember.computed.alias('controllers.store.db'),
@@ -25,7 +27,7 @@ var StoreIndexController = Ember.ArrayController.extend({
 
     if (storeName) {
       EIDB.getAll(db.name, storeName).then(function(res) {
-        controller.set('content', res);;
+        controller.set('content', res);
       });
     }
   }.observes('controllers.application.commandLastSubmitted'),
