@@ -37,3 +37,30 @@ App = Ember.Application.create({
     'loadedmetadata': "loadedMetadata"
   }
 });
+
+//============================================
+//* Testing EIDBRecordAdapter
+var store = this.get('store');
+var id;
+var kid = store.createRecord('kid', {name: 'bob'});
+
+kid.set('name', 'BOBO');
+
+kid.save().then(function(kid) {
+  id = kid.get('id');
+  console.log('kid created ~~~~>');
+  kid.deleteRecord();
+  return kid.save();
+}).then(function() {
+  return store.find('kid', id);
+}).then(null, function(err) {
+  console.log('CRUD record complete~~~~>');
+});
+
+store.findAll('kid').then(function(res) {
+  console.log('findAll----->', res.get('content.length'));
+});
+
+store.findQuery('kid', {name: 'Stan', color: 'red'}).then(function(res) {
+  console.log('findQuery======', res.get('content.length'));
+});

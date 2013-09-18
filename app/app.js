@@ -3,7 +3,7 @@ import formatJSON from 'appkit/helpers/formatJSON';
 
 import DatabaseAdapter from 'appkit/adapters/database_adapter';
 import ObjectStoreAdapter from 'appkit/adapters/object_store_adapter';
-import RecordAdapter from 'appkit/adapters/record_adapter';
+import EIDBRecordAdapter from 'appkit/adapters/eidb_record_adapter';
 
 import DatabaseSerializer from 'appkit/adapters/serializers/database_serializer';
 import ObjectStoreSerializer from 'appkit/adapters/serializers/object_store_serializer';
@@ -18,7 +18,7 @@ var App = Ember.Application.create({
 
   DatabaseAdapter: DatabaseAdapter,
   ObjectStoreAdapter: ObjectStoreAdapter,
-  RecordAdapter: RecordAdapter,
+  ApplicationAdapter: EIDBRecordAdapter,
 
   DatabaseSerializer: DatabaseSerializer,
   ObjectStoreSerializer: ObjectStoreSerializer
