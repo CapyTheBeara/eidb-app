@@ -1,4 +1,5 @@
 import Resolver from 'resolver';
+import formatJSON from 'appkit/helpers/formatJSON';
 
 var App = Ember.Application.create({
   LOG_ACTIVE_GENERATION: true,

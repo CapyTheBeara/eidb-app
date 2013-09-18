@@ -24,8 +24,8 @@ var StoreIndexController = Ember.ArrayController.extend({
         storeName = this.get('storeName');
 
     if (storeName) {
-      EIDB.getAll(db.name, storeName).then(function(_content) {
-        controller._formatAndSetContent(_content);
+      EIDB.getAll(db.name, storeName).then(function(res) {
+        controller.set('content', res);;
       });
     }
   }.observes('controllers.application.commandLastSubmitted'),
@@ -63,16 +63,27 @@ var StoreIndexController = Ember.ArrayController.extend({
     }
 
     query.run().then(function(res) {
-      controller._formatAndSetContent(res);
+      controller.set('content', res);
     });
 
   }.observes('eqValue', 'matchValue'),
 
-  _formatAndSetContent: function(_content) {
-    var content = _content.map(function(val) {
-      return JSON.stringify(val, null, 4);
-    });
-    this.set('content', content);
+  actions: {
+    editRecord: function(record) {
+      // record.set('isEditing', true);
+    },
+
+    deleteRecord: function(record) {
+      var self = this,
+          db = this.get('db'),
+          storeName = this.get('storeName');
+
+      if (confirm("Are you sure?")) {
+        EIDB.deleteRecord(db.name, storeName, record._key).then(function() {
+          self.removeObject(record);
+        });
+      }
+    }
   }
 });
 

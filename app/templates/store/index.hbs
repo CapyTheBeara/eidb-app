@@ -12,9 +12,18 @@
 <div class="values">
     <div class="col-sm-6 col-md-8">
         <ol>
-        {{#each}}
+        {{#each record in content}}
             <li>
-                <pre><code>{{this}}</code></pre>
+                <div class="row">
+                    {{#if record.isEditing}}
+
+                        <button type='button' class='btn btn-success btn-sm'>Save</button>
+                    {{else}}
+                        <pre class='col-sm-5 col-md-8'>{{formatJSON record}}</pre>
+                        <button {{action 'editRecord' record}} type='button' class='btn btn-primary btn-sm'>Edit</button>
+                    {{/if}}
+                    <button {{action 'deleteRecord' record}} type='button' class='btn btn-danger btn-sm'>Delete</button>
+                </div>
             </li>
         {{/each}}
         </ol>
